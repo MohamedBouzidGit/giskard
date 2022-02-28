@@ -396,3 +396,9 @@ plt.show(matrix_lr)
 plt.show()
 ```
 ![image](https://user-images.githubusercontent.com/74253587/156000512-3c16eefc-392a-4a35-aa53-f84c32ceebcb.png)
+
+
+## Summary
+
+In this post, we set up an email theme classifier from a labeled email dataset. To do this, we needed to perform feature extraction and preprocess the text (tokenization, stemming, stop word removal, etc.). TF-IDF and NLTK are very good tools to train the model with scikit learn estimators. 
+However, the best possible model was possible to achieve 40.3 % of accuracy. This is potentially due to the fact that it is necessary to enrich the dataset with much more data per theme. 
