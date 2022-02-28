@@ -246,3 +246,153 @@ df.head()
 
 ## 4. Modeling with Bag of Words and TF-IDF then optimization of the best model
 After encoding the `Target` column containing the class labels, we can compare several machine learning models in order to choose one, then tune its hyperparameters to optimize it. 
+
+```
+# split the data
+features = df['features']
+X = features
+y = y
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+```
+### Bag of Words
+A bag of words is a representation of text that describes the occurrence of words within a document. We just keep track of word counts and disregard the grammatical details and the word order. It is called a "bag" of words because any information about the order or structure of words in the document is discarded.
+
+```
+# vecorization
+vectorizer = CountVectorizer(min_df=5, max_features=5000)
+X_train_bow = vectorizer.fit_transform(X_train)
+X_train_bow = X_train_bow.toarray()
+
+# modeling
+models = [GaussianNB(), MultinomialNB(), DecisionTreeClassifier(), LinearSVC(), 
+          AdaBoostClassifier(base_estimator=DecisionTreeClassifier(), n_estimators=5),
+         MLPClassifier(hidden_layer_sizes=(10,)), KNeighborsClassifier(), LGBMClassifier()]
+
+names = ["Gaussian NB", "Multinomial NB", "Decision Tree", "SVC", "AdaBoost", "ANN", 'KNN', 'LGB']
+
+acc_scores = []
+f1_scores = []
+exec_times = []
+
+for model, name in zip(models, names):
+    print(name)
+    start = time.time()
+    scoring = {
+        'acc': 'accuracy',
+        'f1_mac': 'f1_macro',
+    }
+    scores = cross_validate(model, X_train_bow, y_train, cv=10, n_jobs=4, scoring=scoring)
+    training_time = (time.time() - start)
+    print("accuracy: ", scores['test_acc'].mean())
+    print("f1_score: ", scores['test_f1_mac'].mean())
+    print("time (sec): ", training_time)
+    print("\n")
+    
+    acc_scores.append(scores['test_acc'].mean())
+    f1_scores.append(scores['test_f1_mac'].mean())
+    exec_times.append(training_time)
+    
+acc_df['BoW'] = acc_scores
+f1_df['BoW'] = f1_scores
+acc_df['time'] = exec_times
+acc_df
+```
+![image](https://user-images.githubusercontent.com/74253587/155996072-f6d43974-9fe6-42a8-b25f-30df2e6ec4d0.png)
+
+### TF-IDF
+TF-IDF (term frequency-inverse document frequency) is a statistical measure that evaluates how relevant a word is to a document in a collection of documents . This is done by multiplying two metrics: how many times a word appears in a document, and the inverse document frequency of the word across a set of documents. 
+
+```
+# vectorization
+vectorizer = TfidfVectorizer(min_df=5, max_features=5000)
+X_train_tf = vectorizer.fit_transform(X_train)
+X_train_tf = X_train_tf.toarray()
+
+# modeling
+models = [GaussianNB(), MultinomialNB(), DecisionTreeClassifier(), LinearSVC(), 
+          AdaBoostClassifier(base_estimator=DecisionTreeClassifier(), n_estimators=5),
+         MLPClassifier(hidden_layer_sizes=(10,)), KNeighborsClassifier(), LGBMClassifier()]
+
+names = ["Gaussian NB", "Multinomial NB", "Decision Tree", "SVC", "AdaBoost", "ANN", 'KNN', 'LGB']
+
+acc_scores = []
+f1_scores = []
+exec_times = []
+
+for model, name in zip(models, names):
+    print(name)
+    start = time.time()
+    scoring = {
+        'acc': 'accuracy',
+        'f1_mac': 'f1_macro',
+    }
+    scores = cross_validate(model, X_train_tf, y_train, cv=10, n_jobs=4, scoring=scoring)
+    training_time = (time.time() - start)
+    print("accuracy: ", scores['test_acc'].mean())
+    print("f1_score: ", scores['test_f1_mac'].mean())
+    print("time (sec): ", training_time)
+    print("\n")
+    
+    acc_scores.append(scores['test_acc'].mean())
+    f1_scores.append(scores['test_f1_mac'].mean())
+    exec_times.append(training_time)
+    
+acc_df['TfIdf'] = acc_scores
+f1_df['TfIdf'] = f1_scores
+acc_df['TfIdf_time'] = exec_times
+acc_df
+```
+![image](https://user-images.githubusercontent.com/74253587/155998557-5ab7a109-4f83-4bbd-928c-2d361d083ef6.png)
+
+
+
+We conclude that LinearSVC with TF-IDF has the best performance-duration ratio. The score is low, possibly due to the low data volume (only 879 rows for 13 classes). We decide to optimize the model by tuning the hyperparameters using GridSearchCV.
+
+### Model tuning
+
+
+
+# optimizing the "best" estimator
+
+```
+param_grid = [{'C': [1, 10, 100, 1000],
+               'class_weight': ['balanced', 'None'],  
+               'fit_intercept': ['True', 'False'], 
+               'intercept_scaling': [1, 5, 10], 
+               'tol': [0.1, 0.2, 0.4, 0.8, 1]
+              }]
+
+grid = GridSearchCV(LinearSVC(), param_grid, cv=5, n_jobs=8)
+
+# vectorization
+vectorizer = TfidfVectorizer(min_df=5, max_features=5000)
+X_train_f = vectorizer.fit_transform(X_train)
+X_test_f = vectorizer.transform(X_test)
+X_train_f = X_train_f.toarray()
+X_test_f = X_test_f.toarray()
+
+# training
+grid.fit(X_train_f, y_train)
+
+# Best estimator/hyperparameters
+model = grid.best_estimator_
+model
+```
+`LinearSVC(C=1, class_weight='balanced', fit_intercept='True', intercept_scaling=5, tol=0.8)` is our best model. Let's check how it performs with test data. 
+
+```
+model.score(X_test_f, y_test)
+```
+`0.4034090909090909`. This shows the need to better train this model with more emails per theme. We can see this with the following confusion matrix showing that only themes 2 and 10 are the best estimated by our model: 
+
+```
+# Confusion matrix of correct/incorrect estimates
+fig, ax = plt.subplots(figsize=(10, 10))
+
+matrix_lr = plot_confusion_matrix(grid, X_test_f, y_test, cmap=plt.cm.Blues, ax=ax)
+
+plt.title('Confusion matrix for LinearSVC')
+plt.show(matrix_lr)
+plt.show()
+```
+![image](https://user-images.githubusercontent.com/74253587/156000512-3c16eefc-392a-4a35-aa53-f84c32ceebcb.png)
