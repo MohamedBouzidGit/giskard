@@ -350,11 +350,10 @@ We conclude that LinearSVC with TF-IDF has the best performance-duration ratio. 
 
 ### Model tuning
 
-
-
-# optimizing the "best" estimator
+Now that our model has been selected, we want to optimize it by comparing several hyperparameters via a `GridSearchCV`. The `.best_estimator_` attribute allows to find the optimized model. 
 
 ```
+# optimizing the "best" estimator
 param_grid = [{'C': [1, 10, 100, 1000],
                'class_weight': ['balanced', 'None'],  
                'fit_intercept': ['True', 'False'], 
@@ -400,5 +399,5 @@ plt.show()
 
 ## Summary
 
-In this post, we set up an email theme classifier from a labeled email dataset. To do this, we needed to perform feature extraction and preprocess the text (tokenization, stemming, stop word removal, etc.). TF-IDF and NLTK are very good tools to train the model with scikit learn estimators. 
-However, the best possible model was possible to achieve 40.3 % of accuracy. This is potentially due to the fact that it is necessary to enrich the dataset with much more data per theme. 
+In this post, we set up an email theme classifier from a labeled email dataset. To do this, we needed to perform feature extraction and preprocess the text (tokenization, stemming, stop word removal, etc.). *TF-IDF* and *NLTK* are very good tools to train the model with scikit learn estimators. 
+However, the best possible model (*LinearSCV*) was possible to achieve `40.3 %` of accuracy. This is potentially due to the fact that it is necessary to enrich the dataset with much more data per theme. 
